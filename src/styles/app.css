@@ -57,6 +57,7 @@ h1 .y{color:var(--yellow)}
 .homeFoot{display:flex;gap:10px;justify-content:flex-end;margin-top:2px}
 .small{background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.2);padding:8px 14px;border-radius:99px;font-weight:800;font-size:14px}
 @media (orientation:portrait){
+  #home{overflow-y:auto;-webkit-overflow-scrolling:touch}
   .homeInner{grid-template-columns:1fr;max-width:460px}
   .brand{text-align:center}
   .logo{margin:0 auto 6px;width:84px}
@@ -64,6 +65,22 @@ h1 .y{color:var(--yellow)}
   .sub{font-size:16px}
   .big{min-height:76px}
   .homeFoot{justify-content:center}
+}
+@media (orientation:portrait) and (max-height:700px){
+  #home{padding-top:max(10px,env(safe-area-inset-top));padding-bottom:max(10px,env(safe-area-inset-bottom))}
+  .logo{width:60px;margin-bottom:4px}
+  h1{font-size:clamp(26px,8vw,34px)}
+  .sub{margin:6px 0 8px;font-size:14px}
+  .ladder{gap:4px}
+  .step{min-width:64px;padding:4px 5px;border-radius:10px}
+  .step .st{font-size:11px}
+  .donecount{margin-top:6px;font-size:12px}
+  .bigBtns{gap:8px}
+  .big{min-height:64px;padding:8px 14px;border-radius:16px;gap:10px}
+  .big .bi{font-size:24px;width:36px}
+  .big .bt{font-size:20px}
+  .big .bs{font-size:12px}
+  .small{padding:7px 12px;font-size:13px}
 }
 
 /* ---------------- PLAY ---------------- */
@@ -75,8 +92,28 @@ h1 .y{color:var(--yellow)}
   background:var(--panel);border-left:1.5px solid rgba(255,255,255,.08);overflow-y:auto;-webkit-overflow-scrolling:touch}
 @media (orientation:portrait){
   #play{flex-direction:column}
-  #rinkWrap{flex:0 0 auto;height:min(calc(100vw * 1.14), 60dvh)}
-  #panel{flex:1 1 auto;border-left:0;border-top:1.5px solid rgba(255,255,255,.08)}
+  /* Panel sizes to content; rink takes the leftover so instructions stay fully visible. */
+  #rinkWrap{flex:1 1 auto;min-height:0;height:auto}
+  #panel{flex:0 0 auto;border-left:0;border-top:1.5px solid rgba(255,255,255,.08);overflow:hidden}
+}
+@media (orientation:portrait) and (max-height:700px){
+  #panel{gap:5px;padding:6px 8px 8px}
+  .phead{gap:6px}
+  .ib{width:40px;height:40px;flex-basis:40px}
+  .ib svg{width:20px;height:20px}
+  #pMode{font-size:14px}
+  #pInfo{font-size:11px}
+  .banner{padding:6px 8px;font-size:15px;border-radius:12px}
+  #prompt{font-size:14px}
+  #rows{gap:5px}
+  .row{padding:4px 6px;gap:6px;border-radius:12px}
+  .chip{width:34px;height:34px;font-size:14px;border-width:2px}
+  .rhead{font-size:12px}
+  .rmsg{font-size:12px}
+  #overall{font-size:13px}
+  #overall .why{font-size:12px;padding:5px 7px;margin-top:4px}
+  .btn{min-height:48px;font-size:17px}
+  .btn.hint,.btn.alt{font-size:14px;padding:0 10px}
 }
 .phead{display:flex;align-items:center;gap:8px}
 .ib{width:42px;height:42px;flex:0 0 42px;border-radius:12px;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.55);display:grid;place-items:center}
@@ -114,7 +151,10 @@ h1 .y{color:var(--yellow)}
 #overall.shake{animation:shake .4s}
 @keyframes shake{25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-3px)}}
 #panel > *{flex-shrink:0}
-#actions{display:flex;gap:8px;margin-top:auto;padding-top:6px;position:sticky;bottom:-10px;padding-bottom:10px;margin-bottom:-10px;background:linear-gradient(180deg,rgba(9,19,46,0),rgba(9,19,46,.97) 30%)}
+#actions{display:flex;gap:8px;margin-top:auto;padding-top:6px;padding-bottom:max(6px,env(safe-area-inset-bottom))}
+@media (orientation:portrait){
+  #actions{padding-bottom:2px}
+}
 #rows.compact .rmsg{display:none}
 #rows.compact .row{padding:4px 8px}
 #rows.compact .chip{width:30px;height:30px;font-size:13px}
@@ -179,6 +219,14 @@ h1 .y{color:var(--yellow)}
 .card{width:100%;max-width:560px;max-height:100%;overflow-y:auto;background:linear-gradient(180deg,#1b3168,#0f1f47);border:2px solid rgba(255,255,255,.18);
   border-radius:22px;padding:16px;box-shadow:0 20px 50px rgba(0,0,0,.5);animation:cardIn .22s ease-out}
 @keyframes cardIn{from{transform:scale(.92);opacity:0}}
+@media (orientation:portrait){
+  #sheet{align-items:flex-end;padding:max(12px,env(safe-area-inset-top)) 0 0}
+  #sheet .card{max-width:none;border-radius:22px 22px 0 0;border-bottom:0;
+    max-height:calc(100% - max(12px,env(safe-area-inset-top)));
+    padding:16px 16px max(16px,env(safe-area-inset-bottom));
+    animation:sheetUp .22s ease-out}
+}
+@keyframes sheetUp{from{transform:translateY(18%);opacity:0}}
 .card h2{margin:0 0 8px;font-size:24px;font-weight:900;text-align:center;letter-spacing:.5px}
 .card p{margin:6px 0;font-weight:700;font-size:15px;line-height:1.35;color:#e3ebff;text-align:center}
 .card .choices{display:flex;flex-direction:column;gap:10px;margin-top:12px}
@@ -206,7 +254,7 @@ h1 .y{color:var(--yellow)}
 .rotate-tip{font-size:12px;color:var(--muted);text-align:center;font-weight:700}
 
 /* ---------------- GATE ---------------- */
-.gate{align-items:center;justify-content:center;padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom))}
+.gate{align-items:center;justify-content:center;padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom));overflow-y:auto;-webkit-overflow-scrolling:touch}
 .gateCard{width:100%;max-width:380px;background:linear-gradient(180deg,#1b3168,#0f1f47);border:2px solid rgba(255,255,255,.18);border-radius:22px;padding:22px 18px;box-shadow:0 20px 50px rgba(0,0,0,.5)}
 .gateCard h1{margin:0 0 8px;font-size:clamp(28px,7vh,40px);line-height:.95;font-weight:900;letter-spacing:.5px;text-transform:uppercase;font-style:italic;text-align:center;text-shadow:0 3px 0 #08102a, 0 6px 18px rgba(0,0,0,.5)}
 .gateSub{margin:0 0 16px;text-align:center;font-weight:700;color:#dbe6ff;font-size:15px}
@@ -215,3 +263,9 @@ h1 .y{color:var(--yellow)}
 .gateInput:focus{outline:none;border-color:var(--blue2)}
 .gateErr{margin:8px 0 0;color:var(--red2);font-weight:800;font-size:14px;text-align:center}
 .gateBtn{width:100%;margin-top:14px;min-height:52px}
+@media (orientation:portrait) and (max-height:700px){
+  .gateCard{padding:16px 14px}
+  .gateCard h1{font-size:clamp(24px,7vw,32px)}
+  .gateSub{margin-bottom:12px;font-size:14px}
+  .gateBtn{min-height:48px;margin-top:12px}
+}
