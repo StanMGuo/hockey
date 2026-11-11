@@ -1,0 +1,508 @@
+{
+  "wall": {
+    "good": {
+      "allGood": true,
+      "pass": true,
+      "si": 0,
+      "grades": [
+        "good",
+        "good"
+      ],
+      "dangers": [
+        null,
+        null
+      ]
+    },
+    "bad": {
+      "allGood": false,
+      "pass": false,
+      "grades": [
+        "danger",
+        "off"
+      ]
+    }
+  },
+  "wall_m": {
+    "good": {
+      "allGood": true,
+      "pass": true,
+      "si": 0,
+      "grades": [
+        "good",
+        "good"
+      ],
+      "dangers": [
+        null,
+        null
+      ]
+    },
+    "bad": {
+      "allGood": false,
+      "pass": false,
+      "grades": [
+        "off",
+        "danger"
+      ]
+    }
+  },
+  "corner": {
+    "good": {
+      "allGood": true,
+      "pass": true,
+      "si": 0,
+      "grades": [
+        "good",
+        "good"
+      ],
+      "dangers": [
+        null,
+        null
+      ]
+    },
+    "bad": {
+      "allGood": false,
+      "pass": false,
+      "grades": [
+        "danger",
+        "off"
+      ]
+    }
+  },
+  "corner_m": {
+    "good": {
+      "allGood": true,
+      "pass": true,
+      "si": 0,
+      "grades": [
+        "good",
+        "good"
+      ],
+      "dangers": [
+        null,
+        null
+      ]
+    },
+    "bad": {
+      "allGood": false,
+      "pass": false,
+      "grades": [
+        "off",
+        "danger"
+      ]
+    }
+  },
+  "behindnet": {
+    "good": {
+      "allGood": true,
+      "pass": true,
+      "si": 0,
+      "grades": [
+        "good",
+        "good"
+      ],
+      "dangers": [
+        null,
+        null
+      ]
+    },
+    "bad": {
+      "allGood": false,
+      "pass": false,
+      "grades": [
+        "off",
+        "danger"
+      ]
+    }
+  },
+  "behindnet_m": {
+    "good": {
+      "allGood": true,
+      "pass": true,
+      "si": 0,
+      "grades": [
+        "good",
+        "good"
+      ],
+      "dangers": [
+        null,
+        null
+      ]
+    },
+    "bad": {
+      "allGood": false,
+      "pass": false,
+      "grades": [
+        "danger",
+        "off"
+      ]
+    }
+  },
+  "lowboards": {
+    "good": {
+      "allGood": true,
+      "pass": true,
+      "si": 0,
+      "grades": [
+        "good",
+        "good"
+      ],
+      "dangers": [
+        null,
+        null
+      ]
+    },
+    "bad": {
+      "allGood": false,
+      "pass": false,
+      "grades": [
+        "off",
+        "danger"
+      ]
+    }
+  },
+  "lowboards_m": {
+    "good": {
+      "allGood": true,
+      "pass": true,
+      "si": 0,
+      "grades": [
+        "good",
+        "good"
+      ],
+      "dangers": [
+        null,
+        null
+      ]
+    },
+    "bad": {
+      "allGood": false,
+      "pass": false,
+      "grades": [
+        "danger",
+        "off"
+      ]
+    }
+  },
+  "highcircle": {
+    "good": {
+      "allGood": true,
+      "pass": true,
+      "si": 0,
+      "grades": [
+        "good",
+        "good"
+      ],
+      "dangers": [
+        null,
+        null
+      ]
+    },
+    "bad": {
+      "allGood": false,
+      "pass": false,
+      "grades": [
+        "danger",
+        "off"
+      ]
+    }
+  },
+  "highcircle_m": {
+    "good": {
+      "allGood": true,
+      "pass": true,
+      "si": 0,
+      "grades": [
+        "good",
+        "good"
+      ],
+      "dangers": [
+        null,
+        null
+      ]
+    },
+    "bad": {
+      "allGood": false,
+      "pass": false,
+      "grades": [
+        "off",
+        "danger"
+      ]
+    }
+  },
+  "stolen": {
+    "good": {
+      "allGood": true,
+      "pass": true,
+      "si": 0,
+      "grades": [
+        "good",
+        "good"
+      ],
+      "dangers": [
+        null,
+        null
+      ]
+    },
+    "bad": {
+      "allGood": false,
+      "pass": false,
+      "grades": [
+        "danger",
+        "danger"
+      ]
+    }
+  },
+  "stolen_m": {
+    "good": {
+      "allGood": true,
+      "pass": true,
+      "si": 0,
+      "grades": [
+        "good",
+        "good"
+      ],
+      "dangers": [
+        null,
+        null
+      ]
+    },
+    "bad": {
+      "allGood": false,
+      "pass": false,
+      "grades": [
+        "danger",
+        "danger"
+      ]
+    }
+  },
+  "rim": {
+    "good": {
+      "allGood": true,
+      "pass": true,
+      "si": 0,
+      "grades": [
+        "good",
+        "good"
+      ],
+      "dangers": [
+        null,
+        null
+      ]
+    },
+    "bad": {
+      "allGood": false,
+      "pass": false,
+      "grades": [
+        "danger",
+        "danger"
+      ]
+    }
+  },
+  "rim_m": {
+    "good": {
+      "allGood": true,
+      "pass": true,
+      "si": 0,
+      "grades": [
+        "good",
+        "good"
+      ],
+      "dangers": [
+        null,
+        null
+      ]
+    },
+    "bad": {
+      "allGood": false,
+      "pass": false,
+      "grades": [
+        "danger",
+        "danger"
+      ]
+    }
+  },
+  "carry": {
+    "good": {
+      "allGood": true,
+      "pass": true,
+      "si": 0,
+      "grades": [
+        "good",
+        "good"
+      ],
+      "dangers": [
+        null,
+        null
+      ]
+    },
+    "bad": {
+      "allGood": false,
+      "pass": false,
+      "grades": [
+        "danger",
+        "danger"
+      ]
+    }
+  },
+  "carry_m": {
+    "good": {
+      "allGood": true,
+      "pass": true,
+      "si": 0,
+      "grades": [
+        "good",
+        "good"
+      ],
+      "dangers": [
+        null,
+        null
+      ]
+    },
+    "bad": {
+      "allGood": false,
+      "pass": false,
+      "grades": [
+        "danger",
+        "danger"
+      ]
+    }
+  },
+  "sneak": {
+    "good": {
+      "allGood": true,
+      "pass": true,
+      "si": 0,
+      "grades": [
+        "good",
+        "good"
+      ],
+      "dangers": [
+        null,
+        null
+      ]
+    },
+    "bad": {
+      "allGood": false,
+      "pass": false,
+      "grades": [
+        "danger",
+        "danger"
+      ]
+    }
+  },
+  "sneak_m": {
+    "good": {
+      "allGood": true,
+      "pass": true,
+      "si": 0,
+      "grades": [
+        "good",
+        "good"
+      ],
+      "dangers": [
+        null,
+        null
+      ]
+    },
+    "bad": {
+      "allGood": false,
+      "pass": false,
+      "grades": [
+        "danger",
+        "danger"
+      ]
+    }
+  },
+  "out": {
+    "good": {
+      "allGood": true,
+      "pass": true,
+      "si": 0,
+      "grades": [
+        "good",
+        "good"
+      ],
+      "dangers": [
+        null,
+        null
+      ]
+    },
+    "bad": {
+      "allGood": false,
+      "pass": false,
+      "grades": [
+        "off",
+        "danger"
+      ]
+    }
+  },
+  "out_m": {
+    "good": {
+      "allGood": true,
+      "pass": true,
+      "si": 0,
+      "grades": [
+        "good",
+        "good"
+      ],
+      "dangers": [
+        null,
+        null
+      ]
+    },
+    "bad": {
+      "allGood": false,
+      "pass": false,
+      "grades": [
+        "danger",
+        "off"
+      ]
+    }
+  },
+  "theirnet": {
+    "good": {
+      "allGood": true,
+      "pass": true,
+      "si": 0,
+      "grades": [
+        "good",
+        "good"
+      ],
+      "dangers": [
+        null,
+        null
+      ]
+    },
+    "bad": {
+      "allGood": false,
+      "pass": false,
+      "grades": [
+        "danger",
+        "danger"
+      ]
+    }
+  },
+  "theirnet_m": {
+    "good": {
+      "allGood": true,
+      "pass": true,
+      "si": 0,
+      "grades": [
+        "good",
+        "good"
+      ],
+      "dangers": [
+        null,
+        null
+      ]
+    },
+    "bad": {
+      "allGood": false,
+      "pass": false,
+      "grades": [
+        "danger",
+        "danger"
+      ]
+    }
+  }
+}
