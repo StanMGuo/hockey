@@ -32,6 +32,7 @@ Paired intent: `intent.md` (accepted). Status: accepted.
 | N4 | 移动优先触摸；**本期**不引入后端（见 §5 远期方向） |
 | N5 | 按 SDLC 保留 `docs/` + `intent/refactor-vite-react/{intent,spec,plan}.md` |
 | N6 | 新增/修改场景或规则时：先更新/补充失败测试再改实现（bugfix 禁改该失败断言） |
+| N7 | **任何新功能或行为变更都必须补必要自动化测试，且本地 `npm test` 通过后才算完成** |
 
 ### 2.3 Non-goals（本期变更）
 
