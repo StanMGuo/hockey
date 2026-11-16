@@ -1,5 +1,5 @@
 import { handleLogSession, productionDeps } from '../http';
 
-export default function logSession(request: Request): Promise<Response> {
+export function POST(request: Request): Promise<Response> {
   return handleLogSession(request, productionDeps(request));
 }

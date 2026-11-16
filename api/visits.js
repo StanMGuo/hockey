@@ -478,9 +478,13 @@ function productionDeps(request) {
 }
 
 // src/server/entries/visits.ts
-function visits(request) {
+function GET(request) {
+  return handleVisits(request, productionDeps(request));
+}
+function POST(request) {
   return handleVisits(request, productionDeps(request));
 }
 export {
-  visits as default
+  GET,
+  POST
 };

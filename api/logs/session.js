@@ -367,9 +367,9 @@ function productionDeps(request) {
 }
 
 // src/server/entries/session.ts
-function logSession(request) {
+function POST(request) {
   return handleLogSession(request, productionDeps(request));
 }
 export {
-  logSession as default
+  POST
 };
