@@ -49,122 +49,47 @@ function rateLimited(count) {
   return count >= 30;
 }
 
-// src/server/fileStore.ts
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+// src/server/db.ts
+import postgres from "postgres";
+var PROJECT_REF = "lxwyjdlepsntcosczors";
+var rejectedNoted = false;
+function classifyDatabaseUrl(value) {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed) return "missing";
+  let url;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return "rejected";
+  }
+  const user = decodeURIComponent(url.username);
+  const role = user.split(".")[0] ?? "";
+  const protocolOk = url.protocol === "postgres:" || url.protocol === "postgresql:";
+  const userOk = user.startsWith("hockey_app") && role === "hockey_app";
+  const portOk = url.port === "6543";
+  const sslOk = url.searchParams.get("sslmode") !== "disable";
+  const refOk = user.includes(PROJECT_REF) || url.hostname.includes(PROJECT_REF);
+  if (protocolOk && userOk && portOk && sslOk && refOk) return "ok";
+  return "rejected";
+}
+function noteRejectedDatabaseUrl() {
+  if (rejectedNoted) return;
+  rejectedNoted = true;
+  console.error("DATABASE_URL rejected");
+}
+function createSql(url) {
+  let client = null;
+  return (strings, ...values) => {
+    client ??= postgres(url, { max: 1, prepare: false, ssl: "require" });
+    return client(strings, ...values);
+  };
+}
 
 // src/server/store.ts
 var TEN_MINUTES_MS = 10 * 60 * 1e3;
 var NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1e3;
 
-// src/server/memoryStore.ts
-function createMemoryStore(hooks) {
-  const loaded = revive(hooks?.load?.() ?? null);
-  const sessions = loaded.sessions;
-  const hits = loaded.hits;
-  const save = () => hooks?.save?.({ sessions, hits });
-  return {
-    async ingest(input) {
-      const ip = input.place.ip ?? "";
-      const windowStart = input.at.getTime() - TEN_MINUTES_MS;
-      const recent = hits.filter((hit) => hit.ip === ip && hit.at.getTime() >= windowStart);
-      if (rateLimited(recent.length)) return "limited";
-      hits.push({ ip, at: input.at });
-      const cutoff = input.at.getTime() - NINETY_DAYS_MS;
-      for (let i = sessions.length - 1; i >= 0; i--) {
-        if (sessions[i].lastSeenAt.getTime() < cutoff) sessions.splice(i, 1);
-      }
-      for (let i = hits.length - 1; i >= 0; i--) {
-        if (hits[i].at.getTime() < windowStart) hits.splice(i, 1);
-      }
-      applyIngest(sessions, input);
-      save();
-      return "ok";
-    },
-    async listRecent(limit) {
-      return sessions.slice().sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime()).slice(0, limit).map((session) => ({
-        ...session,
-        spans: session.spans.slice().sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime()).map((span) => ({ ...span }))
-      }));
-    }
-  };
-}
-function revive(raw) {
-  if (!raw || typeof raw !== "object") return { sessions: [], hits: [] };
-  const data = raw;
-  return {
-    sessions: (data.sessions ?? []).map((session) => ({
-      ...session,
-      startedAt: new Date(session.startedAt),
-      lastSeenAt: new Date(session.lastSeenAt),
-      spans: (session.spans ?? []).map((span) => ({
-        ...span,
-        startedAt: new Date(span.startedAt),
-        lastSeenAt: new Date(span.lastSeenAt)
-      }))
-    })),
-    hits: (data.hits ?? []).map((hit) => ({ ip: hit.ip, at: new Date(hit.at) }))
-  };
-}
-function applyIngest(sessions, input) {
-  let session = sessions.find((item) => item.id === input.body.sessionId);
-  if (!session) {
-    session = {
-      id: input.body.sessionId,
-      visitorId: input.body.visitorId,
-      startedAt: input.at,
-      lastSeenAt: input.at,
-      ip: input.place.ip,
-      country: input.place.country,
-      region: input.place.region,
-      city: input.place.city,
-      userAgent: input.place.userAgent,
-      spans: []
-    };
-    sessions.push(session);
-  } else {
-    session.lastSeenAt = input.at;
-  }
-  const identity = {
-    screen: input.body.screen,
-    mode: input.body.mode,
-    scenarioId: input.body.scenarioId,
-    sheet: input.body.sheet
-  };
-  const latest = session.spans[session.spans.length - 1] ?? null;
-  if (decideSpan(latest, identity) === "extend" && latest) {
-    latest.lastSeenAt = input.at;
-    return;
-  }
-  session.spans.push({ ...identity, startedAt: input.at, lastSeenAt: input.at });
-}
-
-// src/server/fileStore.ts
-function createFileStore(filePath) {
-  return createMemoryStore({
-    load: () => readSnapshot(filePath),
-    save: (snapshot) => writeSnapshot(filePath, snapshot)
-  });
-}
-function readSnapshot(filePath) {
-  try {
-    return JSON.parse(readFileSync(filePath, "utf8"));
-  } catch {
-    return null;
-  }
-}
-function writeSnapshot(filePath, snapshot) {
-  mkdirSync(dirname(filePath), { recursive: true });
-  writeFileSync(filePath, JSON.stringify(snapshot));
-}
-var shared = null;
-function localFileStore() {
-  shared ??= createFileStore(".data/visits.json");
-  return shared;
-}
-
 // src/server/visitsStore.ts
-import { neon } from "@neondatabase/serverless";
 function asDate(value) {
   if (value instanceof Date) return value;
   return new Date(String(value));
@@ -173,59 +98,19 @@ function asText(value) {
   if (value == null) return null;
   return String(value);
 }
-function createNeonStore(databaseUrl) {
-  let ready = null;
-  const sql = () => neon(databaseUrl);
-  async function ensure() {
-    if (!ready) {
-      ready = (async () => {
-        const q = sql();
-        await q`CREATE TABLE IF NOT EXISTS visit_sessions (
-          id text PRIMARY KEY,
-          visitor_id text NOT NULL,
-          started_at timestamptz NOT NULL,
-          last_seen_at timestamptz NOT NULL,
-          ip text,
-          country text,
-          region text,
-          city text,
-          user_agent text
-        )`;
-        await q`CREATE TABLE IF NOT EXISTS visit_spans (
-          id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-          session_id text NOT NULL,
-          screen text NOT NULL,
-          mode text,
-          scenario_id text,
-          sheet text,
-          started_at timestamptz NOT NULL,
-          last_seen_at timestamptz NOT NULL
-        )`;
-        await q`CREATE TABLE IF NOT EXISTS visit_ingest (
-          ip text,
-          at timestamptz NOT NULL
-        )`;
-        await q`CREATE INDEX IF NOT EXISTS visit_ingest_ip_at ON visit_ingest (ip, at)`;
-      })().catch((err) => {
-        ready = null;
-        throw err;
-      });
-    }
-    await ready;
-  }
+function createVisitStore(databaseUrl) {
+  const sql = createSql(databaseUrl);
   return {
     async ingest(input) {
-      const q = sql();
-      await ensure();
       const ip = input.place.ip ?? "";
       const windowStart = new Date(input.at.getTime() - TEN_MINUTES_MS);
-      const counted = await q`SELECT count(*)::int AS n FROM visit_ingest WHERE ip = ${ip} AND at >= ${windowStart}`;
+      const counted = await sql`SELECT count(*)::int AS n FROM visit_ingest WHERE ip = ${ip} AND at >= ${windowStart}`;
       const count = Number(counted[0]?.n ?? 0);
       if (rateLimited(count)) return "limited";
-      await q`INSERT INTO visit_ingest (ip, at) VALUES (${ip}, ${input.at})`;
-      const existing = await q`SELECT id FROM visit_sessions WHERE id = ${input.body.sessionId} LIMIT 1`;
+      await sql`INSERT INTO visit_ingest (ip, at) VALUES (${ip}, ${input.at})`;
+      const existing = await sql`SELECT id FROM visit_sessions WHERE id = ${input.body.sessionId} LIMIT 1`;
       if (existing.length === 0) {
-        await q`INSERT INTO visit_sessions (
+        await sql`INSERT INTO visit_sessions (
           id, visitor_id, started_at, last_seen_at, ip, country, region, city, user_agent
         ) VALUES (
           ${input.body.sessionId},
@@ -239,9 +124,9 @@ function createNeonStore(databaseUrl) {
           ${input.place.userAgent}
         )`;
       } else {
-        await q`UPDATE visit_sessions SET last_seen_at = ${input.at} WHERE id = ${input.body.sessionId}`;
+        await sql`UPDATE visit_sessions SET last_seen_at = ${input.at} WHERE id = ${input.body.sessionId}`;
       }
-      const latestRows = await q`SELECT id, screen, mode, scenario_id, sheet
+      const latestRows = await sql`SELECT id, screen, mode, scenario_id, sheet
         FROM visit_spans WHERE session_id = ${input.body.sessionId}
         ORDER BY started_at DESC, id DESC LIMIT 1`;
       const latest = latestRows[0];
@@ -258,9 +143,9 @@ function createNeonStore(databaseUrl) {
         sheet: latest.sheet
       } : null;
       if (decideSpan(current, identity) === "extend" && latest) {
-        await q`UPDATE visit_spans SET last_seen_at = ${input.at} WHERE id = ${latest.id}`;
+        await sql`UPDATE visit_spans SET last_seen_at = ${input.at} WHERE id = ${latest.id}`;
       } else {
-        await q`INSERT INTO visit_spans (session_id, screen, mode, scenario_id, sheet, started_at, last_seen_at)
+        await sql`INSERT INTO visit_spans (session_id, screen, mode, scenario_id, sheet, started_at, last_seen_at)
           VALUES (
             ${input.body.sessionId},
             ${identity.screen},
@@ -272,21 +157,19 @@ function createNeonStore(databaseUrl) {
           )`;
       }
       const cutoff = new Date(input.at.getTime() - NINETY_DAYS_MS);
-      await q`DELETE FROM visit_spans WHERE session_id IN (
+      await sql`DELETE FROM visit_spans WHERE session_id IN (
         SELECT id FROM visit_sessions WHERE last_seen_at < ${cutoff}
       )`;
-      await q`DELETE FROM visit_sessions WHERE last_seen_at < ${cutoff}`;
-      await q`DELETE FROM visit_ingest WHERE at < ${windowStart}`;
+      await sql`DELETE FROM visit_sessions WHERE last_seen_at < ${cutoff}`;
+      await sql`DELETE FROM visit_ingest WHERE at < ${windowStart}`;
       return "ok";
     },
     async listRecent(limit) {
-      const q = sql();
-      await ensure();
-      const sessionRows = await q`SELECT id, visitor_id, started_at, last_seen_at, ip, country, region, city, user_agent
+      const sessionRows = await sql`SELECT id, visitor_id, started_at, last_seen_at, ip, country, region, city, user_agent
         FROM visit_sessions ORDER BY started_at DESC LIMIT ${limit}`;
       const ids = sessionRows.map((row) => String(row.id));
       if (ids.length === 0) return [];
-      const spanRows = await q`SELECT session_id, screen, mode, scenario_id, sheet, started_at, last_seen_at
+      const spanRows = await sql`SELECT session_id, screen, mode, scenario_id, sheet, started_at, last_seen_at
         FROM visit_spans WHERE session_id = ANY(${ids})
         ORDER BY started_at ASC, id ASC`;
       const bySession = /* @__PURE__ */ new Map();
@@ -355,12 +238,14 @@ var noopStore = {
   }
 };
 function productionDeps(request) {
-  const configured = process.env.DATABASE_URL?.trim() || null;
-  const local = !configured && !process.env.VERCEL;
+  const raw = process.env.DATABASE_URL;
+  const verdict = classifyDatabaseUrl(raw);
+  if (verdict === "rejected") noteRejectedDatabaseUrl();
+  const configured = verdict === "ok";
   return {
-    store: configured ? createNeonStore(configured) : local ? localFileStore() : noopStore,
+    store: configured ? createVisitStore(raw?.trim() ?? "") : noopStore,
     now: () => /* @__PURE__ */ new Date(),
-    databaseUrl: configured ?? (local ? "file://.data/visits.json" : null),
+    databaseUrl: configured ? "configured" : null,
     adminPassword: process.env.LOG_ADMIN_PASSWORD,
     secure: process.env.VERCEL === "1" || request.headers.get("x-forwarded-proto") === "https"
   };

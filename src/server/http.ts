@@ -1,8 +1,8 @@
 import { cookieHeader, passwordOk, readCookie, signCookie, verifyCookie } from '../auth/logAccess';
 import { durationMs, validateBody } from '../visit/decide';
 import type { SessionView } from '../logs/format';
-import { localFileStore } from './fileStore';
-import { createNeonStore } from './visitsStore';
+import { classifyDatabaseUrl, noteRejectedDatabaseUrl, redactDatabaseError } from './db';
+import { createVisitStore } from './visitsStore';
 import type { Place, SessionRecord, VisitStore } from './store';
 
 const MAX_BODY = 2048;
@@ -84,7 +84,7 @@ async function listVisits(request: Request, deps: HandlerDeps): Promise<Response
     const sessions = await deps.store.listRecent(100);
     return Response.json({ sessions: sessions.map(toSessionView) });
   } catch (err) {
-    console.error(err);
+    console.error(redactDatabaseError(err));
     return empty(500);
   }
 }
@@ -106,7 +106,7 @@ async function ingestVisit(request: Request, deps: HandlerDeps): Promise<Respons
     if (result === 'limited') return empty(429);
     return empty(204);
   } catch (err) {
-    console.error(err);
+    console.error(redactDatabaseError(err));
     return empty(204);
   }
 }
@@ -139,12 +139,14 @@ const noopStore: VisitStore = {
 };
 
 export function productionDeps(request: Request): HandlerDeps {
-  const configured = process.env.DATABASE_URL?.trim() || null;
-  const local = !configured && !process.env.VERCEL;
+  const raw = process.env.DATABASE_URL;
+  const verdict = classifyDatabaseUrl(raw);
+  if (verdict === 'rejected') noteRejectedDatabaseUrl();
+  const configured = verdict === 'ok';
   return {
-    store: configured ? createNeonStore(configured) : local ? localFileStore() : noopStore,
+    store: configured ? createVisitStore(raw?.trim() ?? '') : noopStore,
     now: () => new Date(),
-    databaseUrl: configured ?? (local ? 'file://.data/visits.json' : null),
+    databaseUrl: configured ? 'configured' : null,
     adminPassword: process.env.LOG_ADMIN_PASSWORD,
     secure: process.env.VERCEL === '1' || request.headers.get('x-forwarded-proto') === 'https',
   };

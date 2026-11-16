@@ -33,7 +33,7 @@ Paired intent: `intent.md` (accepted). Status: accepted.
 
 | ID | Requirement |
 | --- | --- |
-| N1 | 不接入 Vercel Observability、Log Drains，不用已停用的 `@vercel/postgres`、`@vercel/kv`。数据库用 Neon，驱动 `@neondatabase/serverless`。 |
+| N1 | 不接入 Vercel Observability、Log Drains，不用已停用的 `@vercel/postgres`、`@vercel/kv`。数据库是 Supabase 项目 `lxwyjdlepsntcosczors`，驱动 `postgres`，变量名仍是 `DATABASE_URL`。连接和权限见 `intent/database/spec.md`。不用 Neon，不用 `@neondatabase/serverless`。 |
 | N2 | `npm test` 与 `npm run build` 在没有 `DATABASE_URL`、没有 `LOG_ADMIN_PASSWORD` 时也能通过。测试不连接真数据库。 |
 | N3 | Service Worker 的导航回退不得把 `/logs` 或 `/api/*` 送去游戏的 `index.html`。`POST /api/visits` 不被 Workbox 缓存。 |
 | N4 | 上报请求体小于 2 KB。不记录密码、进度、拖拽坐标、经纬度、User-Agent 全文以外的设备指纹。User-Agent 最多存 200 字符，仅作排错，日志页默认不展示。 |
@@ -47,7 +47,7 @@ Paired intent: `intent.md` (accepted). Status: accepted.
 
 ### 3.1 数据
 
-Neon Postgres，两张表。时间列用 `timestamptz`。
+表在 Supabase 项目 `lxwyjdlepsntcosczors`。连接、角色和行级安全见 `intent/database/spec.md`。时间列用 `timestamptz`。
 
 `visit_sessions`
 
@@ -139,8 +139,8 @@ Neon Postgres，两张表。时间列用 `timestamptz`。
 | `src/auth/logAccess.ts` | 拒绝游戏密码、校验管理密码、签发和核对 cookie。可单测，不碰数据库 |
 | `api/visits.ts` | POST 上报、GET 查询 |
 | `api/logs/session.ts` | POST 登录 |
-| `src/server/store.ts` | 写入与查询接口。测试用内存实现，生产用 Neon |
-| `src/server/visitsStore.ts` | Neon 读写与建表。仅 API 引用 |
+| `src/server/store.ts` | 写入与查询接口。测试用内存实现，生产用 `src/server/db.ts` |
+| `src/server/visitsStore.ts` | 通过 `src/server/db.ts` 读写。建表在 `src/server/schema.sql`，不在请求里执行 |
 | `src/logs/format.ts` | 五列文字。日志页和 `src/visit/success.test.ts` 共用 |
 | `src/visit/success.test.ts` | T-LOG-S1…S7。不连数据库，不许跳过 |
 | `logs.html`、`src/logs/main.tsx` | 日志页 |
@@ -148,7 +148,7 @@ Neon Postgres，两张表。时间列用 `timestamptz`。
 | `src/screens/PasswordGate.tsx`、`src/App.tsx` | 密码门与解锁后首页的上报 |
 | `vite.config.ts` | 第二入口；Workbox 排除 `/logs` 与 `/api/` |
 | `vercel.json` | `/logs` 与单页回退 |
-| `package.json` | 增加 `@neondatabase/serverless` |
+| `package.json` | 增加 `postgres`。不再依赖 `@neondatabase/serverless` |
 
 不改 `src/engine/`、`src/data/`、`src/state/`。
 
@@ -156,7 +156,7 @@ Neon Postgres，两张表。时间列用 `timestamptz`。
 
 代码可以在没有数据库时构建和测试。真正记下一条，需要站长自己做两件事（本 spec 的实现阶段不代做生产发布）：
 
-1. 在该 Vercel 项目上连接 Marketplace 的 Neon，让 `DATABASE_URL` 进入项目环境。
+1. 把 `DATABASE_URL` 设成 `intent/database/spec.md` 规定的 `hockey_app` 事务池连接串。不连接 Neon。
 2. 设置 `LOG_ADMIN_PASSWORD`，且不得等于游戏密码。
 
 本地要用日志时，把这两项放进 `.env.local`（已被 `*.local` 忽略）。
@@ -175,7 +175,7 @@ Neon Postgres，两张表。时间列用 `timestamptz`。
 | T-LOG-06 | 访客编号写入后第二次读取不变；没有 `localStorage` 时返回临时编号且不抛 |
 | T-LOG-07 | 密码等于 `APP_PASSWORD` 时拒绝；等于另一组管理密码时通过；cookie 被篡改或过期时无效 |
 
-成功测试也在 `npm test` 里，文件是 `src/visit/success.test.ts`。用内存库和固定时钟，不连 Neon，不允许跳过。脚本写入：`T` 首页 → `T+5秒` Learn `wall` → `T+45秒` 心跳 → `T+50秒` 首页。任一条失败则命令非 0 退出：
+成功测试也在 `npm test` 里，文件是 `src/visit/success.test.ts`。用内存库和固定时钟，不连真库，不允许跳过。脚本写入：`T` 首页 → `T+5秒` Learn `wall` → `T+45秒` 心跳 → `T+50秒` 首页。任一条失败则命令非 0 退出：
 
 | ID | 证明的成功 |
 | --- | --- |
@@ -200,7 +200,7 @@ Done（G4）= T-LOG-01…07 与 T-LOG-S1…S7 都通过，`npm run build` 通过
 | 心跳 30 秒，时长会少算最多约 30 秒；标签页被系统冻住会少得更多 | 接受这个误差。日志页不写成精确到秒的承诺。规格里的「多久」就是服务器收到的首尾之差 |
 | Service Worker 把 `/logs` 吞进游戏壳 | N3，用 denylist。手动打开 `/logs` 确认不是游戏页。五列是否正确由 S1…S7 判定，不靠这次目视 |
 | 共用平板上分不出两个孩子 | N5，与已接受的「匿名编号」一致。不在本变更加人名 |
-| Neon 免费额度用尽或还没连接 | F10：游戏照常。日志页在未配置密码时给出说明。查询失败时页面写「记录暂时读不出来」 |
+| 数据库还没连上或暂时不可用 | F10：游戏照常。日志页在未配置时写明还没有连接数据库。查询失败时页面写「记录暂时读不出来」 |
 | 城市头是编码后的非 ASCII | F6 解码失败则显示「未知」，不让接口 500 |
 | 管理密码被设成游戏密码 | F13 仍然拒绝，登录永远失败，直到改成另一个密码 |
 

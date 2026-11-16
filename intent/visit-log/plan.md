@@ -4,7 +4,7 @@ Paired: `intent.md` (accepted) + `spec.md` (accepted). Status: accepted.
 
 ## Goal
 
-按 spec 记下谁、时间、城市级地点、看了什么、停留多久，存进 Neon，在 `/logs` 给站长看。不改规则、关卡、流程、解锁和进度。没有数据库时游戏照常能玩，构建和测试也不依赖数据库。
+按 spec 记下谁、时间、城市级地点、看了什么、停留多久，存进 Supabase 项目 `lxwyjdlepsntcosczors`，在 `/logs` 给站长看。变量名仍是 `DATABASE_URL`。连接见 `intent/database/spec.md`。不改规则、关卡、流程、解锁和进度。没有数据库时游戏照常能玩，构建和测试也不依赖数据库。
 
 ## Source of truth
 
@@ -28,9 +28,9 @@ Paired: `intent.md` (accepted) + `spec.md` (accepted). Status: accepted.
 | `src/visit/report.ts` | 新增。`noteVisit`、心跳、队列、`pagehide` / `online`。只被浏览器引用 |
 | `src/auth/logAccess.ts` | 新增。管理密码、cookie。不读数据库 |
 | `src/auth/logAccess.test.ts` | 新增。T-LOG-07 |
-| `src/server/store.ts` | 新增。写入和查询的接口。API 与测试都靠它，不直接绑死 Neon |
+| `src/server/store.ts` | 新增。写入和查询的接口。API 与测试都靠它，不直接绑死数据库驱动 |
 | `src/server/memoryStore.ts` | 新增。同一套接口的内存实现，给自动验收用。不进浏览器包 |
-| `src/server/visitsStore.ts` | 新增。Neon 实现。只被 API 引用 |
+| `src/server/visitsStore.ts` | 新增。通过 `src/server/db.ts` 读写。只被 API 引用 |
 | `src/logs/format.ts` | 新增。把一条会话格式成日志页上的五列文字。页面和自动测试共用 |
 | `src/visit/success.test.ts` | 新增。自动验收：谁、时间、地点、看了什么、多久。不连数据库，不许跳过 |
 | `api/visits.ts` | 新增。`POST` 上报，`GET` 查最近 100 次 |
@@ -41,7 +41,7 @@ Paired: `intent.md` (accepted) + `spec.md` (accepted). Status: accepted.
 | `src/screens/PasswordGate.tsx` | 挂上时上报 `gate` |
 | `vite.config.ts` | 第二入口、Workbox 排除、开发时把 `/logs` 和 `/api` 接上 |
 | `vercel.json` | `/logs` → `/logs.html`，其余未命中文件回 `index.html` |
-| `package.json` / lock | 增加 `@neondatabase/serverless` |
+| `package.json` / lock | 增加 `postgres`。不再依赖 `@neondatabase/serverless` |
 | `src/engine/`、`src/data/`、`src/state/` | 不改 |
 
 ## Order
@@ -49,14 +49,14 @@ Paired: `intent.md` (accepted) + `spec.md` (accepted). Status: accepted.
 1. 写 `decide.ts` 和它的测试，先让 T-LOG-01…05 失败再通过。身体只认 `visitorId`、`sessionId`、`kind`（`beat` | `end`）、`screen`、`mode`、`scenarioId`、`sheet`。UUID 用标准 8-4-4-4-12。时长用服务器时间相减，结束早于开始则为 0。同一会话且 screen、mode、scenarioId、sheet 都相同 → 延长；否则新开一段。
 2. 写 `identity.ts` 和 T-LOG-06。存储抛错时用当页内存编号，不向外抛。
 3. 写 `logAccess.ts` 和 T-LOG-07。用 SHA-256 把提交值和管理密码变成定长摘要再逐字节比较。比较之后，只要提交值等于 `APP_PASSWORD` 就拒绝。未配置 `LOG_ADMIN_PASSWORD` 视为不可登录。Cookie 名 `hdt_log`，值是 `过期秒.HMAC`，HMAC 密钥是管理密码，有效期 7 天。篡改或过期无效。
-4. 先写 `store.ts` 和 `memoryStore.ts`，再写 `visitsStore.ts`。处理函数接收 store 和 `now()`，测试传入内存库和固定时钟，生产才用 Neon。`neon()` 放在函数内部，不要在模块顶层调用，这样没有 `DATABASE_URL` 时导入模块也不会在构建期炸掉。第一次写入前执行下面的建表（`IF NOT EXISTS`）：
+4. 先写 `store.ts` 和 `memoryStore.ts`，再写 `visitsStore.ts`。处理函数接收 store 和 `now()`，测试传入内存库和固定时钟，生产才用 `src/server/db.ts`。`postgres()` 放在第一次查询里，不要在模块顶层调用，这样没有 `DATABASE_URL` 时导入模块也不会在构建期炸掉。建表不在请求里做，语句在 `src/server/schema.sql`：
 
    - `visit_sessions(id text primary key, visitor_id text, started_at timestamptz, last_seen_at timestamptz, ip text, country text, region text, city text, user_agent text)`
    - `visit_spans(id bigint generated always as identity primary key, session_id text, screen text, mode text, scenario_id text, sheet text, started_at timestamptz, last_seen_at timestamptz)`
    - `visit_ingest(ip text, at timestamptz)`，给 `(ip, at)` 建索引
 
    写入时：先数这个 IP 在 10 分钟内的 `visit_ingest` 行，已有 30 行就不要再写会话，交给接口返回 429。没超限就插入一行 ingest，再按步骤 1 的判定延长或新开。地点和 IP 只在会话第一次插入时写入。然后删掉 `last_seen_at` 早于 90 天的会话和画面段，以及 10 分钟以前的 ingest 行。
-5. 写 `src/visit/success.test.ts`，先红再绿。用内存库和固定时钟，不 `sleep`，不连 Neon。脚本按这个顺序写入同一会话：`T` 首页 → `T+5秒` Learn 关卡 `wall` → `T+45秒` 同一关心跳 → `T+50秒` 回首页。然后走真正的 POST / GET 处理函数（注入内存库），再用 `format.ts` 格式化。下面任一条失败，`npm test` 必须非 0 退出：
+5. 写 `src/visit/success.test.ts`，先红再绿。用内存库和固定时钟，不 `sleep`，不连真库。脚本按这个顺序写入同一会话：`T` 首页 → `T+5秒` Learn 关卡 `wall` → `T+45秒` 同一关心跳 → `T+50秒` 回首页。然后走真正的 POST / GET 处理函数（注入内存库），再用 `format.ts` 格式化。下面任一条失败，`npm test` 必须非 0 退出：
 
    | ID | 断言 |
    | --- | --- |
@@ -68,7 +68,7 @@ Paired: `intent.md` (accepted) + `spec.md` (accepted). Status: accepted.
    | T-LOG-S6 | 用 `renderToStaticMarkup` 渲染日志表，HTML 里同时出现 S1 的编号前 8 位、S2 的时间、S3 的地点、S4 的路径、S5 的时长。没有这五个字符串不算通过 |
    | T-LOG-S7 | 未登录 GET 是 401。游戏密码登录是 401。管理密码登录后，同一个 GET 才得到上面这条。`databaseUrl` 为空时 POST 仍是 204，且 store 的写入次数是 0 |
 
-6. 写两个 API。处理函数的签名是 `(request, store, now)`，文件里的默认导出再去拿 Neon。`POST /api/visits`：先校验，400 直接返回且不记限流；没有 `DATABASE_URL` 或数据库抛错则 `console.error` 并返回 204；超限 429；成功 204。从 `x-vercel-ip-country`、`x-vercel-ip-country-region`、`x-vercel-ip-city` 取地点，城市做一次 `decodeURIComponent`，失败或空字符串当空。IP 用 `x-forwarded-for` 第一段，否则 `x-real-ip`。不读经纬度。User-Agent 截到 200 字。`GET /api/visits`：cookie 无效 401，有效则返回按开始时间倒序的 100 个会话和各自的画面段，并带上算好的 `durationMs`。`POST /api/logs/session`：503（没配密码）、401、或 Set-Cookie。本地 HTTP 不加 Secure；`VERCEL` 环境或 `x-forwarded-proto: https` 时加 Secure。SameSite=Lax，HttpOnly，Path=/。
+6. 写两个 API。处理函数的签名是 `(request, store, now)`，文件里的默认导出再去拿 `src/server/db.ts`。连接串不符合 `intent/database/spec.md` 时视为没有数据库。`POST /api/visits`：先校验，400 直接返回且不记限流；没有可用的 `DATABASE_URL` 或数据库抛错则 `console.error` 并返回 204；超限 429；成功 204。从 `x-vercel-ip-country`、`x-vercel-ip-country-region`、`x-vercel-ip-city` 取地点，城市做一次 `decodeURIComponent`，失败或空字符串当空。IP 用 `x-forwarded-for` 第一段，否则 `x-real-ip`。不读经纬度。User-Agent 截到 200 字。`GET /api/visits`：cookie 无效 401，有效则返回按开始时间倒序的 100 个会话和各自的画面段，并带上算好的 `durationMs`。`POST /api/logs/session`：503（没配密码）、401、或 Set-Cookie。本地 HTTP 不加 Secure；`VERCEL` 环境或 `x-forwarded-proto: https` 时加 Secure。SameSite=Lax，HttpOnly，Path=/。
 7. 写 `report.ts`。`noteVisit` 若和上一拍的画面身份相同，不发请求。真正发出之后，把下一次心跳重新排到 30 秒后，避免和刚发出的画面变化叠在一起。页面不可见时不跳心跳。隐藏或 `pagehide` 用 `sendBeacon` 送 `kind: "end"`，没有 beacon 就用 `fetch` 且 `keepalive: true`。失败（除 400）进 `hdt-visit-queue`；400 丢掉。`online`、心跳、页面打开时从旧到新补送；遇到 429 或网络失败就停，60 秒后再试。队列逻辑用步骤 1 的纯函数裁剪。
 8. 挂钩，且不上报拖拽和评分：
    - `PasswordGate` 挂载 → `gate`
@@ -96,7 +96,7 @@ Paired: `intent.md` (accepted) + `spec.md` (accepted). Status: accepted.
 - 把日志表做进游戏首页的一个按钮：球员都知道游戏密码，入口一放出来就等于公开访问记录。
 - 复用 `app.css`：它把 `body` 锁死且禁止选择文字，日志表无法往下滚动。
 - 只在浏览器 `localStorage` 记日志：换一台手机就没了，站长也看不到别人。
-- 模块顶层就 `neon(process.env.DATABASE_URL)`：没配数据库时，构建导入该文件会直接抛错，违反 spec N2。
+- 模块顶层就 `postgres(process.env.DATABASE_URL)`：没配数据库时，构建导入该文件会直接抛错，违反 spec N2。
 - 每个心跳都新插一行画面：日志会被心跳刷满，违反 spec F5。
 
 ## Risks
@@ -112,7 +112,7 @@ Paired: `intent.md` (accepted) + `spec.md` (accepted). Status: accepted.
 
 ## 怎样算成功
 
-五列对不对，由 `npm test` 里的 T-LOG-S1…S7 判定，不靠人眼。这组测试用内存库和固定时钟，不连 Neon，也不许 `it.skip`。一条失败，命令以非 0 退出，就不能说做成了。
+五列对不对，由 `npm test` 里的 T-LOG-S1…S7 判定，不靠人眼。这组测试用内存库和固定时钟，不连真库，也不许 `it.skip`。一条失败，命令以非 0 退出，就不能说做成了。
 
 它固定写这一次访问：`T` 首页，5 秒后进入 Learn 的 `wall`，40 秒后再跳一次，50 秒时回首页。然后检查：
 
