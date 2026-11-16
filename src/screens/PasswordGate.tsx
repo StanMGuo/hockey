@@ -1,11 +1,16 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { checkPassword, unlockGate } from '../auth/gate';
+import { noteVisit } from '../visit/report';
 
 type Props = { onUnlock: () => void };
 
 export default function PasswordGate({ onUnlock }: Props) {
   const [value, setValue] = useState('');
   const [error, setError] = useState(false);
+
+  useEffect(() => {
+    noteVisit({ screen: 'gate', mode: null, scenarioId: null, sheet: null });
+  }, []);
 
   function submit(e: FormEvent) {
     e.preventDefault();

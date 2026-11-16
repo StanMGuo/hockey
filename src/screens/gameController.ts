@@ -25,6 +25,7 @@ import {
 import { UNLOCK, defaultProg, unlocked as unlockedFor } from '../state/progress';
 import type { ProgressStore } from '../state/ProgressStore';
 import type { DefPos, EvalResult, Grade, Kind, Progress, Role, Scenario, Zone } from '../types';
+import type { VisitSheet, VisitSnapshot } from '../visit/types';
 
 const NS = 'http://www.w3.org/2000/svg';
 
@@ -141,7 +142,16 @@ function roleOf(Z: { kind: Kind }, role: Role): string {
   return ROLE_TXT[Z.kind][role];
 }
 
-export function createGame(root: HTMLElement, store: ProgressStore): () => void {
+export type VisitNote = (snapshot: VisitSnapshot) => void;
+
+export function createGame(root: HTMLElement, store: ProgressStore, onVisit: VisitNote = () => {}): () => void {
+  const visit = (snapshot: VisitSnapshot): void => {
+    try {
+      onVisit(snapshot);
+    } catch (err) {
+      console.error(err);
+    }
+  };
   const $ = <T extends HTMLElement = HTMLElement>(s: string): T => root.querySelector<T>(s)!;
   const svg = root.querySelector<SVGSVGElement>('#rink')!;
 
@@ -776,6 +786,7 @@ export function createGame(root: HTMLElement, store: ProgressStore): () => void 
         { cls: 'go', label: 'READY!', fn: () => void doCheck() },
       ]);
     }
+    if (G.mode) visit({ screen: 'play', mode: G.mode, scenarioId: st.id, sheet: null });
   }
 
   function onDrop(i: number): void {
@@ -1167,6 +1178,7 @@ export function createGame(root: HTMLElement, store: ProgressStore): () => void 
     G.busy = false;
     renderHome();
     show('home');
+    visit({ screen: 'home', mode: null, scenarioId: null, sheet: null });
   }
   function restart(): void {
     if (G.mode === 'game') {
@@ -1207,7 +1219,7 @@ export function createGame(root: HTMLElement, store: ProgressStore): () => void 
   }
 
   /* ---------------- home + sheets ---------------- */
-  function openSheet(html: string, btns?: Btn[]): void {
+  function openSheet(html: string, btns?: Btn[], sheet: VisitSheet = 'other'): void {
     const c = $('#card');
     c.innerHTML = html;
     if (btns && btns.length) {
@@ -1223,9 +1235,12 @@ export function createGame(root: HTMLElement, store: ProgressStore): () => void 
       c.appendChild(row);
     }
     $('#sheet').classList.add('on');
+    visit({ screen: 'sheet', mode: G.mode, scenarioId: G.st?.id ?? null, sheet });
   }
   function closeSheet(): void {
     $('#sheet').classList.remove('on');
+    if (G.mode && G.st) visit({ screen: 'play', mode: G.mode, scenarioId: G.st.id, sheet: null });
+    else visit({ screen: 'home', mode: null, scenarioId: null, sheet: null });
   }
 
   function renderHome(): void {
@@ -1276,6 +1291,7 @@ export function createGame(root: HTMLElement, store: ProgressStore): () => void 
             },
           },
         ],
+        'practice-pick',
       );
       return;
     }
@@ -1286,6 +1302,7 @@ export function createGame(root: HTMLElement, store: ProgressStore): () => void 
     <button class="big game ${l3 ? '' : 'locked'}" id="pTest"><span class="bi">🎯</span><span><span class="bt">TEST ME</span><span class="bs">${l3 ? 'No help. Can you do it?' : `Finish ${UNLOCK} in HELP ME (${Math.min(prog.passes[2] || 0, UNLOCK)}/${UNLOCK})`}</span></span>${l3 ? '' : '<span class="lock">🔒</span>'}</button>
     </div>`,
       [{ cls: 'alt', label: 'Close', fn: closeSheet }],
+      'practice-pick',
     );
     $('#pHelp').onclick = () => {
       closeSheet();
@@ -1313,6 +1330,7 @@ export function createGame(root: HTMLElement, store: ProgressStore): () => void 
             },
           },
         ],
+        'game-pick',
       );
       return;
     }
@@ -1324,6 +1342,7 @@ export function createGame(root: HTMLElement, store: ProgressStore): () => void 
     openSheet(
       `<h2>GAME CHALLENGE</h2><p>The puck moves. They might steal it! Move D1 and D2 every time.</p><div class="choices">${cards}</div>`,
       [{ cls: 'alt', label: 'Close', fn: closeSheet }],
+      'game-pick',
     );
     root.querySelectorAll<HTMLElement>('.seqcard').forEach((b) => {
       b.onclick = () => {
@@ -1353,6 +1372,7 @@ export function createGame(root: HTMLElement, store: ProgressStore): () => void 
           },
         },
       ],
+      'how',
     );
   }
 
@@ -1374,6 +1394,7 @@ export function createGame(root: HTMLElement, store: ProgressStore): () => void 
             },
           },
         ],
+        'settings',
       );
       $('#tSound').onclick = () => {
         prog.sound = !prog.sound;
@@ -1460,6 +1481,7 @@ export function createGame(root: HTMLElement, store: ProgressStore): () => void 
   resetD();
   applyOrientation();
   renderHome();
+  visit({ screen: 'home', mode: null, scenarioId: null, sheet: null });
   if (!prog.seenHow) later(howTo, 300);
 
   return () => {

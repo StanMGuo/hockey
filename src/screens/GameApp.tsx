@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { createGame } from './gameController';
 import { LocalStorageProgressStore } from '../state/LocalStorageProgressStore';
 import type { ProgressStore } from '../state/ProgressStore';
+import { noteVisit } from '../visit/report';
 
 type Props = { store?: ProgressStore };
 
@@ -15,7 +16,7 @@ export default function GameApp({ store }: Props) {
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
-    const destroy = createGame(root, store ?? new LocalStorageProgressStore());
+    const destroy = createGame(root, store ?? new LocalStorageProgressStore(), noteVisit);
     return destroy;
   }, [store]);
 
