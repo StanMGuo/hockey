@@ -33,6 +33,17 @@ describe('T-LOG-06 visitor identity', () => {
     expect(sessionId()).toBe(sessionStorage.getItem(SESSION_KEY));
   });
 
+  it('builds a uuid when randomUUID is missing', () => {
+    vi.stubGlobal('localStorage', mockStorage());
+    vi.stubGlobal('crypto', {
+      getRandomValues: (bytes: Uint8Array) => {
+        bytes.set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]);
+        return bytes;
+      },
+    });
+    expect(visitorId()).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  });
+
   it('returns a stable temporary id when storage throws', () => {
     const broken: Storage = {
       length: 0,

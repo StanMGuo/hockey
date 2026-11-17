@@ -172,6 +172,27 @@ describe('visit success', () => {
     expect(row.visitor).toBe(VISITOR.slice(0, 8));
   });
 
+  it('T-LOG-S8 shows Windows when the visit came from a Windows computer', async () => {
+    const store = createMemoryStore();
+    const res = await postAt(
+      store,
+      T,
+      { sessionId: SESSION, screen: 'play', mode: 'game', scenarioId: 'wall', sheet: null },
+      {
+        ...GEO,
+        'user-agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      },
+    );
+    expect(res.status).toBe(204);
+    const [session] = await read(store, new Date(T.getTime() + 1_000));
+    expect(session?.device).toBe('Windows');
+    const html = renderToStaticMarkup(createElement(LogsTable, { sessions: [session!], timeZone: ZONE }));
+    expect(html).toContain('系统');
+    expect(html).toContain('Windows');
+    expect(html).toContain('Game / wall');
+  });
+
   it('T-LOG-S7 hides the log and does not write when the database is unset', async () => {
     const store = createMemoryStore();
     await script(store);

@@ -5,6 +5,16 @@ export const SESSION_KEY = 'hdt-visit-session';
 
 const memory: { visitor: string | null; session: string | null } = { visitor: null, session: null };
 
+function randomId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  bytes[6] = (bytes[6]! & 0x0f) | 0x40;
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+  const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 function browserStorage(kind: 'local' | 'session'): Storage | null {
   try {
     const storage = kind === 'local' ? globalThis.localStorage : globalThis.sessionStorage;
@@ -21,7 +31,7 @@ function persistentId(kind: 'visitor' | 'session'): string {
     try {
       const existing = storage.getItem(key);
       if (existing && isUuid(existing)) return existing;
-      const created = crypto.randomUUID();
+      const created = randomId();
       storage.setItem(key, created);
       return created;
     } catch {
@@ -30,7 +40,7 @@ function persistentId(kind: 'visitor' | 'session'): string {
   }
   const cached = kind === 'visitor' ? memory.visitor : memory.session;
   if (cached) return cached;
-  const created = crypto.randomUUID();
+  const created = randomId();
   if (kind === 'visitor') memory.visitor = created;
   else memory.session = created;
   return created;

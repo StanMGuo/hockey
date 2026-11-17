@@ -12,6 +12,7 @@ export function LogsTable({ sessions, timeZone }: Props) {
           <th>开始时间</th>
           <th>访客</th>
           <th>地点</th>
+          <th>系统</th>
           <th>IP</th>
           <th>停留</th>
           <th>路径</th>
@@ -25,6 +26,7 @@ export function LogsTable({ sessions, timeZone }: Props) {
               <td>{row.when}</td>
               <td>{row.visitor}</td>
               <td>{row.place}</td>
+              <td>{row.device}</td>
               <td>{row.ip}</td>
               <td>{row.duration}</td>
               <td>{row.path}</td>

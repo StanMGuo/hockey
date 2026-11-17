@@ -15,7 +15,7 @@ html, body {
   font-family: var(--font);
 }
 body { overflow: auto; user-select: text; }
-.logPage { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+.logPage { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; }
 h1 { font-size: 28px; margin: 0 0 16px; }
 form { display: grid; gap: 10px; max-width: 360px; }
 label { color: var(--muted); }

@@ -91,8 +91,24 @@ function validateBody(input) {
   return { visitorId, sessionId, kind, screen, mode, scenarioId, sheet };
 }
 
+// src/logs/format.ts
+function formatDevice(userAgent) {
+  const agent = userAgent ?? "";
+  if (/Windows/i.test(agent)) return "Windows";
+  if (/iPhone/i.test(agent)) return "iPhone";
+  if (/iPad/i.test(agent)) return "iPad";
+  if (/Android/i.test(agent)) return "Android";
+  if (/Mac OS X|Macintosh/i.test(agent)) return "Mac";
+  if (/CrOS/i.test(agent)) return "ChromeOS";
+  if (/Linux/i.test(agent)) return "Linux";
+  return "\u672A\u77E5";
+}
+
 // src/server/db.ts
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import postgres from "postgres";
+loadLocalDatabaseUrl();
 var PROJECT_REF = "lxwyjdlepsntcosczors";
 var rejectedNoted = false;
 function classifyDatabaseUrl(value) {
@@ -139,6 +155,20 @@ function redactDatabaseError(err) {
     return redacted;
   }
   return err;
+}
+function loadLocalDatabaseUrl() {
+  if (process.env.DATABASE_URL?.trim()) return;
+  const path = resolve(process.cwd(), ".env");
+  if (!existsSync(path)) return;
+  for (const line of readFileSync(path, "utf8").split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eq = trimmed.indexOf("=");
+    if (eq < 1) continue;
+    const key = trimmed.slice(0, eq);
+    if (key !== "DATABASE_URL" || process.env[key]?.trim()) continue;
+    process.env[key] = trimmed.slice(eq + 1);
+  }
 }
 function secretPieces(url) {
   const pieces = /* @__PURE__ */ new Set([url]);
@@ -320,6 +350,7 @@ function toSessionView(session) {
     country: session.country,
     region: session.region,
     city: session.city,
+    device: formatDevice(session.userAgent),
     spans: session.spans.map((span) => ({
       screen: span.screen,
       mode: span.mode,

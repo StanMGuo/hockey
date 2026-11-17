@@ -16,6 +16,7 @@ export type SessionView = {
   country: string | null;
   region: string | null;
   city: string | null;
+  device: string;
   spans: SpanView[];
 };
 
@@ -23,6 +24,7 @@ export type FormattedSession = {
   when: string;
   visitor: string;
   place: string;
+  device: string;
   ip: string;
   duration: string;
   path: string;
@@ -36,6 +38,18 @@ export function formatDuration(ms: number): string {
   const seconds = total % 60;
   if (seconds === 0) return `${minutes} 分`;
   return `${minutes} 分 ${seconds} 秒`;
+}
+
+export function formatDevice(userAgent: string | null): string {
+  const agent = userAgent ?? '';
+  if (/Windows/i.test(agent)) return 'Windows';
+  if (/iPhone/i.test(agent)) return 'iPhone';
+  if (/iPad/i.test(agent)) return 'iPad';
+  if (/Android/i.test(agent)) return 'Android';
+  if (/Mac OS X|Macintosh/i.test(agent)) return 'Mac';
+  if (/CrOS/i.test(agent)) return 'ChromeOS';
+  if (/Linux/i.test(agent)) return 'Linux';
+  return '未知';
 }
 
 export function formatPlace(city: string | null, region: string | null, country: string | null): string {
@@ -76,6 +90,7 @@ export function formatSession(session: SessionView, timeZone: string): Formatted
     when: formatWhen(session.startedAt, timeZone),
     visitor: session.visitorId.slice(0, 8),
     place: formatPlace(session.city, session.region, session.country),
+    device: session.device?.trim() ? session.device : '未知',
     ip: session.ip && session.ip.trim() ? session.ip : '未知',
     duration: formatDuration(session.durationMs),
     path: session.spans.map((span) => `${spanLabel(span)} ${formatDuration(span.durationMs)}`).join(' → '),

@@ -11,7 +11,10 @@ let installed = false;
 let heartbeat: ReturnType<typeof setTimeout> | null = null;
 let retry: ReturnType<typeof setTimeout> | null = null;
 let flushing = false;
+let flushAgain = false;
 let endSent = false;
+let memoryQueue: VisitBody[] | null = null;
+const keepaliveItems = new WeakSet<VisitBody>();
 
 function make(kind: VisitKind): VisitBody {
   return {
@@ -25,7 +28,7 @@ function make(kind: VisitKind): VisitBody {
   };
 }
 
-function loadQueue(): VisitBody[] {
+function readStored(): VisitBody[] {
   try {
     const raw = localStorage.getItem(QUEUE_KEY);
     if (!raw) return [];
@@ -40,11 +43,17 @@ function loadQueue(): VisitBody[] {
   }
 }
 
+function loadQueue(): VisitBody[] {
+  memoryQueue ??= readStored();
+  return memoryQueue;
+}
+
 function saveQueue(items: VisitBody[]): void {
+  memoryQueue = trimQueue(items);
   try {
-    localStorage.setItem(QUEUE_KEY, JSON.stringify(trimQueue(items)));
+    localStorage.setItem(QUEUE_KEY, JSON.stringify(memoryQueue));
   } catch {
-    /* the game still runs when storage is blocked */
+    /* a Windows PC that blocks site data still keeps the queue in memory */
   }
 }
 
@@ -52,13 +61,13 @@ function enqueue(body: VisitBody): void {
   saveQueue([...loadQueue(), body]);
 }
 
-async function post(body: VisitBody): Promise<'ok' | 'drop' | 'retry'> {
+async function post(body: VisitBody, keepalive = false): Promise<'ok' | 'drop' | 'retry'> {
   try {
     const res = await fetch('/api/visits', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'text/plain;charset=UTF-8' },
       body: JSON.stringify(body),
-      keepalive: true,
+      keepalive,
     });
     if (res.status === 400) return 'drop';
     if (res.status === 204) return 'ok';
@@ -88,24 +97,35 @@ function scheduleRetry(): void {
 }
 
 async function flush(): Promise<void> {
-  if (flushing) return;
+  if (flushing) {
+    flushAgain = true;
+    return;
+  }
   flushing = true;
   try {
-    let queue = loadQueue();
-    while (queue.length > 0) {
-      const item = queue[0];
+    for (;;) {
+      const item = loadQueue()[0];
       if (!item) break;
-      const result = await post(item);
+      const keepalive = keepaliveItems.has(item);
+      keepaliveItems.delete(item);
+      const result = await post(item, keepalive);
       if (result === 'retry') {
+        if (keepalive) keepaliveItems.add(item);
         scheduleRetry();
+        flushAgain = false;
         return;
       }
-      queue = queue.slice(1);
-      saveQueue(queue);
+      const latest = loadQueue();
+      const rest = latest[0] === item ? latest.slice(1) : latest.filter((entry) => entry !== item);
+      saveQueue(rest);
     }
     scheduleHeartbeat();
   } finally {
     flushing = false;
+    if (flushAgain) {
+      flushAgain = false;
+      void flush();
+    }
   }
 }
 
@@ -115,13 +135,14 @@ function sendEnd(): void {
   const body = make('end');
   try {
     if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
-      const blob = new Blob([JSON.stringify(body)], { type: 'application/json' });
-      if (navigator.sendBeacon('/api/visits', blob)) return;
+      const payload = JSON.stringify(body);
+      if (navigator.sendBeacon('/api/visits', payload)) return;
     }
   } catch {
     /* fall through to the queue */
   }
   enqueue(body);
+  keepaliveItems.add(body);
   void flush();
 }
 

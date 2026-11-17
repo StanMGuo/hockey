@@ -1,6 +1,6 @@
 import { cookieHeader, passwordOk, readCookie, signCookie, verifyCookie } from '../auth/logAccess';
 import { durationMs, validateBody } from '../visit/decide';
-import type { SessionView } from '../logs/format';
+import { formatDevice, type SessionView } from '../logs/format';
 import { classifyDatabaseUrl, noteRejectedDatabaseUrl, redactDatabaseError } from './db';
 import { createVisitStore } from './visitsStore';
 import type { Place, SessionRecord, VisitStore } from './store';
@@ -60,6 +60,7 @@ export function toSessionView(session: SessionRecord): SessionView {
     country: session.country,
     region: session.region,
     city: session.city,
+    device: formatDevice(session.userAgent),
     spans: session.spans.map((span) => ({
       screen: span.screen,
       mode: span.mode,
