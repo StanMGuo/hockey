@@ -144,7 +144,12 @@ function roleOf(Z: { kind: Kind }, role: Role): string {
 
 export type VisitNote = (snapshot: VisitSnapshot) => void;
 
-export function createGame(root: HTMLElement, store: ProgressStore, onVisit: VisitNote = () => {}): () => void {
+export function createGame(
+  root: HTMLElement,
+  store: ProgressStore,
+  onVisit: VisitNote = () => {},
+  onSwitchPlayer?: () => void,
+): () => void {
   const visit = (snapshot: VisitSnapshot): void => {
     try {
       onVisit(snapshot);
@@ -1265,6 +1270,9 @@ export function createGame(root: HTMLElement, store: ProgressStore, onVisit: Vis
     $('#doneCount').textContent = prog.completed
       ? `🏒 ${prog.completed} situation${prog.completed === 1 ? '' : 's'} played`
       : '🏒 Start with LEARN!';
+    if (store.unsavedNote?.()) store.flush?.();
+    const saveNote = root.querySelector('#saveNote');
+    if (saveNote) saveNote.textContent = store.unsavedNote?.() ?? '';
     const pr = $('#hPractice');
     const gm = $('#hGame');
     pr.classList.toggle('locked', !unlocked(2));
@@ -1383,7 +1391,8 @@ export function createGame(root: HTMLElement, store: ProgressStore, onVisit: Vis
       <div class="setrow"><span>🔊 Sounds</span><button class="tog ${prog.sound ? 'on' : ''}" id="tSound" aria-label="Sounds"></button></div>
       <div class="setrow"><span>🔓 Unlock every level<br><span style="font-size:12px;color:var(--muted)">For grown-ups and coaches</span></span><button class="tog ${prog.unlockAll ? 'on' : ''}" id="tUnlock" aria-label="Unlock all"></button></div>
       <div class="setrow"><span>🗑️ Start over<br><span style="font-size:12px;color:var(--muted)">Erase all progress on this phone</span></span><button class="small" id="tReset">Reset</button></div>
-      <p style="font-size:12px;color:var(--muted)">Progress is saved on this phone only. No account needed.</p>`,
+      ${onSwitchPlayer ? '<div class="setrow"><span>👤 Switch player<br><span style="font-size:12px;color:var(--muted)">Someone else takes a turn</span></span><button class="small" id="tSwitch" type="button">Switch</button></div>' : ''}
+      <p style="font-size:12px;color:var(--muted)">Progress is saved to your profile.</p>`,
         [
           {
             cls: 'go',
@@ -1427,6 +1436,8 @@ export function createGame(root: HTMLElement, store: ProgressStore, onVisit: Vis
         saveProg();
         draw();
       };
+      const switchBtn = root.querySelector<HTMLButtonElement>('#tSwitch');
+      if (switchBtn && onSwitchPlayer) switchBtn.onclick = () => onSwitchPlayer();
     };
     draw();
   }
@@ -1472,6 +1483,11 @@ export function createGame(root: HTMLElement, store: ProgressStore, onVisit: Vis
   document.addEventListener('dblclick', prevent);
   window.addEventListener('resize', onResize);
   window.addEventListener('orientationchange', onOrient);
+  const onQueue = () => {
+    const saveNote = root.querySelector('#saveNote');
+    if (saveNote) saveNote.textContent = store.unsavedNote?.() ?? '';
+  };
+  window.addEventListener('hdt-progress-queue', onQueue);
 
   /* ---------------- boot ---------------- */
   closeSheet();
@@ -1496,5 +1512,6 @@ export function createGame(root: HTMLElement, store: ProgressStore, onVisit: Vis
     document.removeEventListener('dblclick', prevent);
     window.removeEventListener('resize', onResize);
     window.removeEventListener('orientationchange', onOrient);
+    window.removeEventListener('hdt-progress-queue', onQueue);
   };
 }

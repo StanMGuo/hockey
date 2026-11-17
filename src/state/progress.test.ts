@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MemoryProgressStore } from './LocalStorageProgressStore';
-import { UNLOCK, defaultProg, normalizeProgress, unlocked } from './progress';
+import { UNLOCK, defaultProg, initialProgressForCreate, isEmptyProgress, normalizeProgress, shouldDropAnonymous, unlocked } from './progress';
 
 describe('progress', () => {
   it('T-PROG-01 default shape', () => {
@@ -37,6 +37,32 @@ describe('progress', () => {
     p.completed = 7;
     store.save(p);
     expect(store.load()).toEqual(p);
+  });
+
+  it('T-ID-03 empty progress ignores sound and seenHow', () => {
+    expect(isEmptyProgress(defaultProg())).toBe(true);
+    const seen = defaultProg();
+    seen.seenHow = true;
+    seen.sound = false;
+    expect(isEmptyProgress(seen)).toBe(true);
+    const started = defaultProg();
+    started.passes[1] = 1;
+    expect(isEmptyProgress(started)).toBe(false);
+  });
+
+  it('T-ID-04 uploads a non-empty local progress only for a new profile', () => {
+    const local = defaultProg();
+    local.passes[1] = 2;
+    local.completed = 2;
+    expect(initialProgressForCreate(local)).toEqual(local);
+    expect(shouldDropAnonymous(false, local)).toBe(false);
+  });
+
+  it('T-ID-05 keeps cloud progress when the profile already exists', () => {
+    const local = defaultProg();
+    local.completed = 4;
+    expect(shouldDropAnonymous(true, local)).toBe(true);
+    expect(initialProgressForCreate(defaultProg())).toEqual(defaultProg());
   });
 
   it('T-PROG-05 bad json normalize', () => {

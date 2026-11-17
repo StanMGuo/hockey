@@ -43,7 +43,7 @@ describe('visit report', () => {
     const { noteVisit } = await loadReport();
     noteVisit(PLAY);
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const init = (fetchMock.mock.calls as unknown[][])[0]?.[1] as RequestInit;
     expect(init.keepalive).toBe(false);
     expect(String(init.headers && (init.headers as Record<string, string>)['content-type'])).toContain('text/plain');
     const body = JSON.parse(String(init.body)) as { screen: string; kind: string; scenarioId: string };
@@ -76,7 +76,7 @@ describe('visit report', () => {
     await Promise.resolve();
     await Promise.resolve();
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    const second = JSON.parse(String((fetchMock.mock.calls[1]?.[1] as RequestInit).body)) as { screen: string };
+    const second = JSON.parse(String(((fetchMock.mock.calls as unknown[][])[1]?.[1] as RequestInit | undefined)?.body)) as { screen: string };
     expect(second.screen).toBe('play');
     release?.(new Response(null, { status: 204 }));
     await fetchMock.mock.results[1]?.value;
@@ -105,7 +105,7 @@ describe('visit report', () => {
     doc.visibilityState = 'hidden';
     onVisibility?.();
     expect(sendBeacon).toHaveBeenCalledTimes(1);
-    const payload = sendBeacon.mock.calls[0]?.[1];
+    const payload = (sendBeacon.mock.calls as unknown[][])[0]?.[1];
     expect(typeof payload).toBe('string');
     expect(JSON.parse(String(payload)).kind).toBe('end');
     expect(fetchMock).toHaveBeenCalledTimes(1);

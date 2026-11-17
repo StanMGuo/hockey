@@ -1,4 +1,4 @@
-import { APP_PASSWORD } from './gate';
+import { secretEqual } from '../server/pin';
 
 export const LOG_COOKIE = 'hdt_log';
 const WEEK_SECONDS = 7 * 24 * 60 * 60;
@@ -30,13 +30,13 @@ function timingEqualText(a: string, b: string): boolean {
 
 /**
  * Hash both strings before comparing so the check does not stop on length.
- * The shared game password never opens the log, even if it was copied into the env var.
+ * The team password never opens the log, even if it was copied into the admin env var.
  */
 export async function passwordOk(submitted: string, adminPassword: string | undefined): Promise<boolean> {
   if (!adminPassword) return false;
-  const same = timingEqual(await sha256(submitted), await sha256(adminPassword));
-  if (submitted === APP_PASSWORD) return false;
-  return same;
+  const team = process.env.TEAM_PASSWORD;
+  if (team && secretEqual(submitted, team)) return false;
+  return timingEqual(await sha256(submitted), await sha256(adminPassword));
 }
 
 export async function signCookie(adminPassword: string, now: Date): Promise<string> {

@@ -1,7 +1,6 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { APP_PASSWORD } from '../auth/gate';
 import { formatSession, type SessionView } from '../logs/format';
 import { LogsTable } from '../logs/LogsTable';
 import { handleLogSession, handleVisits, type HandlerDeps } from '../server/http';
@@ -200,14 +199,16 @@ describe('visit success', () => {
     const d = deps(store, () => now);
     const anon = await handleVisits(new Request('http://local/api/visits'), d);
     expect(anon.status).toBe(401);
+    process.env.TEAM_PASSWORD = ADMIN;
     const game = await handleLogSession(
       new Request('http://local/api/logs/session', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ password: APP_PASSWORD }),
+        body: JSON.stringify({ password: ADMIN }),
       }),
       d,
     );
+    delete process.env.TEAM_PASSWORD;
     expect(game.status).toBe(401);
     const sessions = await read(store, now);
     expect(sessions[0]?.visitorId).toBe(VISITOR);

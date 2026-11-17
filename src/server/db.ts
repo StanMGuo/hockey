@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import postgres from 'postgres';
 
-loadLocalDatabaseUrl();
+loadLocalEnv(['DATABASE_URL', 'TEAM_PASSWORD', 'LOG_ADMIN_PASSWORD']);
 
 const PROJECT_REF = 'lxwyjdlepsntcosczors';
 
@@ -63,8 +63,9 @@ export function redactDatabaseError(err: unknown): unknown {
   return err;
 }
 
-function loadLocalDatabaseUrl(): void {
-  if (process.env.DATABASE_URL?.trim()) return;
+function loadLocalEnv(keys: string[]): void {
+  const wanted = new Set(keys.filter((key) => !process.env[key]?.trim()));
+  if (wanted.size === 0) return;
   const path = resolve(process.cwd(), '.env');
   if (!existsSync(path)) return;
   for (const line of readFileSync(path, 'utf8').split('\n')) {
@@ -73,8 +74,10 @@ function loadLocalDatabaseUrl(): void {
     const eq = trimmed.indexOf('=');
     if (eq < 1) continue;
     const key = trimmed.slice(0, eq);
-    if (key !== 'DATABASE_URL' || process.env[key]?.trim()) continue;
+    if (!wanted.has(key) || process.env[key]?.trim()) continue;
     process.env[key] = trimmed.slice(eq + 1);
+    wanted.delete(key);
+    if (wanted.size === 0) break;
   }
 }
 

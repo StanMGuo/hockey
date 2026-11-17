@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Plugin } from 'vite';
 import { handleLogSession, handleVisits, productionDeps } from './src/server/http';
+import { handleCreate, handleLogin, handleLogout, handleSave, productionProfileDeps } from './src/server/profiles';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 
@@ -21,7 +22,9 @@ function visitDevApi(): Plugin {
           next();
           return;
         }
-        if (path !== '/api/visits' && path !== '/api/logs/session') {
+        const profilePath =
+          path === '/api/login' || path === '/api/profiles' || path === '/api/progress' || path === '/api/logout';
+        if (path !== '/api/visits' && path !== '/api/logs/session' && !profilePath) {
           next();
           return;
         }
@@ -41,8 +44,16 @@ function visitDevApi(): Plugin {
             headers,
             body: method === 'GET' || method === 'HEAD' ? undefined : Buffer.concat(chunks),
           });
-          const response =
-            path === '/api/logs/session'
+          const profileDeps = () => productionProfileDeps(request);
+          const response = profilePath
+            ? path === '/api/login'
+              ? await handleLogin(request, profileDeps())
+              : path === '/api/profiles'
+                ? await handleCreate(request, profileDeps())
+                : path === '/api/progress'
+                  ? await handleSave(request, profileDeps())
+                  : await handleLogout(request, profileDeps())
+            : path === '/api/logs/session'
               ? await handleLogSession(request, productionDeps(request))
               : await handleVisits(request, productionDeps(request));
           res.statusCode = response.status;

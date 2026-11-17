@@ -15,6 +15,38 @@ export function defaultProg(): Progress {
   };
 }
 
+export function readAnonymousProgress(): Progress {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return defaultProg();
+    return normalizeProgress(JSON.parse(raw));
+  } catch {
+    return defaultProg();
+  }
+}
+
+export function clearAnonymousProgress(): void {
+  try {
+    localStorage.removeItem(STORE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function isEmptyProgress(prog: Progress): boolean {
+  const noPasses = (prog.passes[1] || 0) === 0 && (prog.passes[2] || 0) === 0 && (prog.passes[3] || 0) === 0;
+  return noPasses && prog.completed === 0 && prog.learnIdx === 0 && Object.keys(prog.game).length === 0 && !prog.unlockAll;
+}
+
+/** Local anonymous progress is uploaded only when this name and jersey do not exist yet. */
+export function initialProgressForCreate(local: Progress): Progress {
+  return isEmptyProgress(local) ? defaultProg() : local;
+}
+
+export function shouldDropAnonymous(pairExists: boolean, local: Progress): boolean {
+  return pairExists && !isEmptyProgress(local);
+}
+
 export function unlocked(prog: Progress, level: number): boolean {
   return level === 1 || prog.unlockAll || (prog.passes[level - 1] || 0) >= UNLOCK;
 }

@@ -1,5 +1,8 @@
-// src/auth/gate.ts
-var APP_PASSWORD = "hawksu9red";
+// src/server/pin.ts
+import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+function secretEqual(a, b) {
+  return timingSafeEqual(createHash("sha256").update(a).digest(), createHash("sha256").update(b).digest());
+}
 
 // src/auth/logAccess.ts
 var LOG_COOKIE = "hdt_log";
@@ -23,9 +26,9 @@ function timingEqual(a, b) {
 }
 async function passwordOk(submitted, adminPassword) {
   if (!adminPassword) return false;
-  const same = timingEqual(await sha256(submitted), await sha256(adminPassword));
-  if (submitted === APP_PASSWORD) return false;
-  return same;
+  const team = process.env.TEAM_PASSWORD;
+  if (team && secretEqual(submitted, team)) return false;
+  return timingEqual(await sha256(submitted), await sha256(adminPassword));
 }
 async function signCookie(adminPassword, now) {
   const exp = Math.floor(now.getTime() / 1e3) + WEEK_SECONDS;

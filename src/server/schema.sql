@@ -57,3 +57,35 @@ drop policy if exists hockey_app_all on public.visit_spans;
 create policy hockey_app_all on public.visit_spans for all to hockey_app using (true) with check (true);
 drop policy if exists hockey_app_all on public.visit_ingest;
 create policy hockey_app_all on public.visit_ingest for all to hockey_app using (true) with check (true);
+
+create table if not exists public.profiles (
+  id uuid primary key default gen_random_uuid(),
+  name_key text not null,
+  display_name text not null,
+  jersey integer not null check (jersey between 0 and 99),
+  pin_hash text not null,
+  progress jsonb not null,
+  created_at timestamptz not null default now(),
+  unique (name_key, jersey)
+);
+
+create table if not exists public.sessions (
+  token text primary key,
+  profile_id uuid not null references public.profiles (id) on delete cascade,
+  expires_at timestamptz not null
+);
+
+grant select, insert, update, delete on public.profiles, public.sessions to hockey_app;
+
+alter table public.profiles enable row level security;
+alter table public.profiles force row level security;
+alter table public.sessions enable row level security;
+alter table public.sessions force row level security;
+
+revoke all on table public.profiles from public, anon, authenticated, service_role;
+revoke all on table public.sessions from public, anon, authenticated, service_role;
+
+drop policy if exists hockey_app_all on public.profiles;
+create policy hockey_app_all on public.profiles for all to hockey_app using (true) with check (true);
+drop policy if exists hockey_app_all on public.sessions;
+create policy hockey_app_all on public.sessions for all to hockey_app using (true) with check (true);

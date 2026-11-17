@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { APP_PASSWORD } from './gate';
 import { cookieHeader, passwordOk, signCookie, verifyCookie } from './logAccess';
 
 const ADMIN = 'log-admin-pass';
@@ -7,12 +6,15 @@ const NOW = new Date('2026-11-15T23:00:00.000Z');
 
 afterEach(() => {
   delete process.env.LOG_ADMIN_PASSWORD;
+  delete process.env.TEAM_PASSWORD;
 });
 
 describe('T-LOG-07 log access', () => {
   it('rejects the game password and accepts a different admin password', async () => {
-    expect(await passwordOk(APP_PASSWORD, ADMIN)).toBe(false);
-    expect(await passwordOk(APP_PASSWORD, APP_PASSWORD)).toBe(false);
+    process.env.TEAM_PASSWORD = 'shared-game-password';
+    expect(await passwordOk('shared-game-password', ADMIN)).toBe(false);
+    expect(await passwordOk('shared-game-password', 'shared-game-password')).toBe(false);
+    delete process.env.TEAM_PASSWORD;
     expect(await passwordOk('wrong', ADMIN)).toBe(false);
     expect(await passwordOk(ADMIN, ADMIN)).toBe(true);
     expect(await passwordOk(ADMIN, undefined)).toBe(false);

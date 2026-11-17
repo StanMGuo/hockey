@@ -4,21 +4,24 @@ import { LocalStorageProgressStore } from '../state/LocalStorageProgressStore';
 import type { ProgressStore } from '../state/ProgressStore';
 import { noteVisit } from '../visit/report';
 
-type Props = { store?: ProgressStore };
+type Props = { store?: ProgressStore; onSwitchPlayer?: () => void };
 
 /**
  * React is only the shell: it renders the baseline DOM structure
  * (#home, #play, #sheet) once, and the imperative game controller drives it.
  */
-export default function GameApp({ store }: Props) {
+export default function GameApp({ store, onSwitchPlayer }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
-    const destroy = createGame(root, store ?? new LocalStorageProgressStore(), noteVisit);
-    return destroy;
-  }, [store]);
+    const destroy = createGame(root, store ?? new LocalStorageProgressStore(), noteVisit, onSwitchPlayer);
+    return () => {
+      destroy();
+      store?.dispose?.();
+    };
+  }, [store, onSwitchPlayer]);
 
   return (
     <div ref={rootRef} style={{ display: 'contents' }}>
@@ -53,6 +56,7 @@ export default function GameApp({ store }: Props) {
             <p className="sub">Learn where to go. Protect the ice. Help your team!</p>
             <div className="ladder" id="ladder"></div>
             <div className="donecount" id="doneCount"></div>
+            <div className="donecount" id="saveNote"></div>
           </div>
           <div>
             <div className="bigBtns">
